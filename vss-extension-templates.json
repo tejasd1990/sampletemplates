@@ -1,0 +1,21 @@
+{
+    "manifestVersion": 1,
+    "extensionId": "vss-continuous-delivery-pipeline-templates",
+    "name": "Pipeline templates extension for continuous delivery",
+    "publisher": "ms",
+    "version": "0.1.0",
+    "description": "Pipeline template contributions for creating CI/CD pipelines",
+    "categories": [
+        "Integrate"
+    ],
+    "galleryFlags": [
+        "System",
+        "BuiltIn",
+        "MultiVersion"
+    ],
+    "targets": [
+        {
+            "id": "Microsoft.VisualStudio.Services"
+        }
+    ]
+}

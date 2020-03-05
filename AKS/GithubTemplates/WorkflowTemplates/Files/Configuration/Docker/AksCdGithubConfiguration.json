@@ -1,0 +1,47 @@
+{
+    "variables": [
+      {
+        "id": "containerRegistryId",
+        "value": "{{#equals 'true' inputs.reuseACR 1}}{{inputs.existingContainerRegistryId}}{{/equals}}{{#equals 'false' inputs.reuseACR 1}}/subscriptions/{{inputs.subscriptionId}}/resourceGroups/{{inputs.resourceGroup}}/providers/Microsoft.ContainerRegistry/registries/{{inputs.containerRegistryName}}{{/equals}}"
+      },
+      {
+        "id": "containerRegistryName",
+        "value": "{{#equals 'true' inputs.reuseACR 1}}{{#parseAzureResourceId inputs.existingContainerRegistryId 8}}{{/parseAzureResourceId}}{{/equals}}{{#equals 'false' inputs.reuseACR 1}}{{inputs.containerRegistryName}}{{/equals}}"
+      },
+      {
+        "id": "registryUrl",
+        "value": "{{#toLower variables.containerRegistryName}}{{/toLower}}.azurecr.io"
+      },
+      {
+        "id": "imageName",
+        "value": "{{#sanitizeString inputs.clusterName 50}}{{/sanitizeString}}{{#tinyguid}}{{/tinyguid}}"
+      },
+      {
+        "id": "aksResourceId",
+        "value": "/subscriptions/{{inputs.subscriptionId}}/resourceGroups/{{inputs.resourceGroup}}/providers/Microsoft.ContainerService/managedClusters/{{inputs.clusterName}}",
+        "logTelemetry": true,
+        "hashTelemetryValue": true
+      },
+      {
+        "id": "acrResourceGroup",
+        "value": "{{inputs.resourceGroup}}"
+      },
+      {
+        "id": "namespace",
+        "value": "{{#sanitizeString inputs.clusterName 50}}{{/sanitizeString}}{{#tinyguid}}{{/tinyguid}}"
+      },
+      {
+        "id": "secretName",
+        "value": "{{#sanitizeString inputs.clusterName 12}}{{/sanitizeString}}dockerauth"
+      },
+      {
+        "id": "appName",
+        "value": "{{#sanitizeString inputs.clusterName 50}}-{{#tinyguid}}{{/tinyguid}}"
+      }
+    ],
+    "source": null,
+    "pipelineDefinition": {
+      "templateFile": "{{#equals 'true' inputs.reuseACR 1}}Files/PipelineDefinitionTemplates/deploytoAksReuseAcr.yml{{/equals}}{{#equals 'false' inputs.reuseACR 1}}Files/PipelineDefinitionTemplates/deploytoAksNewACR.yml{{/equals}}",
+      "destinationFileName": "deploytoAksCluster.yml"
+    }
+  }

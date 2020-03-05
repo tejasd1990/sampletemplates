@@ -1,0 +1,69 @@
+on: [push]
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+    
+    - uses: actions/checkout@master
+    
+    - uses: azure/login@v1
+      with:
+        creds: ${{ secrets.AZURE_CREDENTIALS }}
+
+    - name: Create ACR
+      id: create-acr
+      run: |
+        az acr create -n {{ variables.containerRegistryName }} -g {{ variables.acrResourceGroup}} --location "{{inputs.containerRegistryLocation}}" --sku {{inputs.containerRegistrySKU}} --admin-enabled
+        echo "::set-output name=acr_username::`az acr credential show -n {{ variables.containerRegistryName }} --query username | xargs`"
+        echo "::set-output name=acr_password::`az acr credential show -n {{ variables.containerRegistryName }} --query passwords[0].value | xargs`"
+        echo "::add-mask::`az acr credential show -n {{ variables.containerRegistryName }} --query passwords[0].value | xargs`"
+
+    - uses: azure/docker-login@v1
+      with:
+        login-server: {{variables.registryUrl}}
+        username: ${{#environmnetVar steps.create-acr.outputs.acr_username }}{{/environmnetVar}}
+        password: ${{#environmnetVar steps.create-acr.outputs.acr_password }}{{/environmnetVar}}
+
+    - name: Build and push image to ACR
+      id: build-image
+      run: |
+        docker build "$GITHUB_WORKSPACE/{{ inputs.dockerContext }}" -f  "{{ inputs.dockerFilePath }}" -t {{ variables.registryUrl }}/{{ variables.imageName }}:${{#environmnetVar github.sha}}{{/environmnetVar}}
+        docker push {{ variables.registryUrl }}/{{ variables.imageName }}:${{#environmnetVar github.sha}}{{/environmnetVar}}
+    
+    - uses: azure/k8s-set-context@v1
+      id: login
+      with:
+         kubeconfig: ${{ secrets.KUBE_CONFIG }}
+    
+    - name: Create namespace
+      run: |
+        namespacePresent=`kubectl get namespace | grep {{ variables.namespace }} | wc -l`
+        if [ $namespacePresent -eq 0 ]
+        then
+            echo `kubectl create namespace {{ variables.namespace }}`
+        fi
+
+    - uses: azure/k8s-create-secret@v1
+      with:
+        namespace: {{ variables.namespace }}
+        container-registry-url: {{ variables.registryUrl }}
+        container-registry-username: ${{#environmnetVar steps.create-acr.outputs.acr_username }}{{/environmnetVar}}
+        container-registry-password: ${{#environmnetVar steps.create-acr.outputs.acr_password }}{{/environmnetVar}}
+        secret-name: {{ variables.secretName }}
+       
+    - uses: azure/k8s-deploy@v1
+      with:
+        namespace: {{ variables.namespace }}
+        manifests: |
+          {{#if inputs.httpApplicationRoutingDomain}}
+          {{ assets.deploymentFile }}
+          {{ assets.serviceFile }}
+          {{ assets.ingressFile }}
+          {{else}}
+          {{ assets.deploymentFile }}
+          {{ assets.serviceFile }}
+          {{/if}}
+        images: |
+          {{ variables.registryUrl }}/{{ variables.imageName }}:${{#environmnetVar github.sha}}{{/environmnetVar}}
+        imagepullsecrets: |
+          {{ variables.secretName }}

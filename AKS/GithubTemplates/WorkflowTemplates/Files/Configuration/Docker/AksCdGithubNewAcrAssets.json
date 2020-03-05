@@ -1,0 +1,64 @@
+{
+    "assets": [
+        {
+            "id": "azureCredentials",
+            "type": "AzureCredentials",
+            "stage": "Pre",
+            "inputs": {
+                "subscriptionId": "{{ inputs.subscriptionId }}",
+                "azureAuth": "{{ inputs.azureAuth }}"
+            }
+        },
+        {
+            "id": "kubeConfig",
+            "type": "AksKubeConfig",
+            "stage": "Pre",
+            "inputs": {
+                "resourceId": "{{ variables.aksResourceId }}",
+                "authentication": "{{ inputs.azureDevOpsAuth }}"
+            }
+        },
+        {
+            "id": "updateDeploymentTags",
+            "type": "UpdateDeploymentTags",
+            "stage": "Post",
+            "inputs": {
+                "resourceId": "{{ variables.aksResourceId }}",
+                "apiVersion": "2018-03-31",
+                "authentication": "{{ inputs.azureDevOpsAuth }}"
+            }
+        },
+        {
+            "id": "AZURE_CREDENTIALS",
+            "type": "SetGHSecret",
+            "inputs": {
+                "secretKey": "AZURE_CREDENTIALS",
+                "secretvalue": "{{ assets.azureCredentials }}"
+            }
+        },
+        {
+            "id": "KUBE_CONFIG",
+            "type": "SetGHSecret",
+            "inputs": {
+                "secretKey": "aks_{{inputs.clusterName}}_kubeConfig",
+                "secretvalue": "{{ assets.kubeConfig }}"
+            }
+        },
+        {
+            "id": "deploymentFile",
+            "type": "commitFile:Github",
+            "inputs": {
+                "source": "Files/Dependency/deployment.yml",
+                "destination": "manifests/deployment.yml"
+            }
+        },
+        {
+            "id": "serviceFile",
+            "type": "commitFile:Github",
+            "inputs": {
+                "source": "Files/Dependency/service.yml",
+                "destination": "manifests/service.yml"
+            }
+        }
+    ]
+}

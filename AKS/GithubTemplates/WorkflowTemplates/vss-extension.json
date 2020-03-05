@@ -1,0 +1,45 @@
+{
+    "files": [
+        {
+            "path": "Files",
+            "addressable": true
+        }
+    ],
+    "eventCallbacks": {
+        "versionCheck": {
+            "uri": "{{DeploymentUrl \"0000003B-0000-8888-8000-000000000000\"}}_apis/public/extensions/vdisc"
+        }
+    },
+    "contributions": [
+        {
+            "id": "aks-cd-with-dockerfile-github",
+            "type": "ms.vss-continuous-delivery.pipeline-template-type",
+            "targets": [
+                "ms.vss-continuous-delivery.pipeline-templates"
+            ],
+            "properties": {
+                "description": "i18n:Template for configuring github workflow on an AKS cluster using dockerfile",
+                "attributes": {
+                    "language": "Docker",
+                    "buildTarget": "Dockerfile",
+                    "deployTarget": "Azure:AKS",
+                    "serviceId": "ms.vss-continuous-delivery-pipeline-templates.service-type-aks",
+                    "templateType": "continuous-delivery",
+                    "pipelineType": "github",
+                    "codeRepositoryType": "BYOC"
+                },
+                "parameters": {
+                    "imports": [
+                        "Files/Parameters/AksCdWithDockerFileV2.json"
+                    ]
+                },
+                "configuration": {
+                    "imports": [
+                        "{{#equals 'true' inputs.reuseACR 1}}{{#if inputs.httpApplicationRoutingDomain}}Files/Configuration/Docker/GithubWorkflow/AksCdGithubReuseAcrHttpRoutingEnabledAssets.json{{else}}Files/Configuration/Docker/GithubWorkflow/AksCdGithubReuseAcrAssets.json{{/if}}{{/equals}}{{#equals 'false' inputs.reuseACR 1}}{{#if inputs.httpApplicationRoutingDomain}}Files/Configuration/Docker/GithubWorkflow/AksCdGithubNewAcrHttpRoutingEnabledAssets.json{{else}}Files/Configuration/Docker/GithubWorkflow/AksCdGithubNewAcrAssets.json{{/if}}{{/equals}}",
+                        "Files/Configuration/Docker/GithubWorkflow/AksCdGithubConfiguration.json"
+                    ]
+                }
+            }
+        }
+    ]
+}

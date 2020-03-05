@@ -1,0 +1,56 @@
+on: [push]
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@master
+    
+    - uses: azure/docker-login@v1
+      with:
+        login-server: {{variables.registryUrl}}
+        username: ${{ secrets.REGISTRY_USERNAME }}
+        password: ${{ secrets.REGISTRY_PASSWORD }}
+    
+    - name: Build and push image to ACR
+      id: build-image
+      run: |
+        docker build "$GITHUB_WORKSPACE/{{ inputs.dockerContext }}" -f  "{{ inputs.dockerFilePath }}" -t {{ variables.registryUrl }}/{{ variables.imageName }}:${{#environmnetVar github.sha}}{{/environmnetVar}}
+        docker push {{ variables.registryUrl }}/{{ variables.imageName }}:${{#environmnetVar github.sha}}{{/environmnetVar}}
+    
+    - uses: azure/k8s-set-context@v1
+      with:
+         kubeconfig: ${{ secrets.KUBE_CONFIG }}
+      id: login
+    
+    - name: Create namespace
+      run: |
+        namespacePresent=`kubectl get namespace | grep {{ variables.namespace }} | wc -l`
+        if [ $namespacePresent -eq 0 ]
+        then
+            echo `kubectl create namespace {{ variables.namespace }}`
+        fi
+
+    - uses: azure/k8s-create-secret@v1
+      with:
+        namespace: {{ variables.namespace }}
+        container-registry-url: {{ variables.registryUrl }}
+        container-registry-username: ${{ secrets.REGISTRY_USERNAME }}
+        container-registry-password: ${{ secrets.REGISTRY_PASSWORD }}
+        secret-name: {{ variables.secretName }}
+       
+    - uses: azure/k8s-deploy@v1
+      with:
+        namespace: {{ variables.namespace }}
+        manifests: |
+          {{#if inputs.httpApplicationRoutingDomain}}
+          {{ assets.deploymentFile }}
+          {{ assets.serviceFile }}
+          {{ assets.ingressFile }}
+          {{else}}
+          {{ assets.deploymentFile }}
+          {{ assets.serviceFile }}
+          {{/if}}
+        images: |
+          {{ variables.registryUrl }}/{{ variables.imageName }}:${{#environmnetVar github.sha}}{{/environmnetVar}}
+        imagepullsecrets: |
+          {{ variables.secretName }}

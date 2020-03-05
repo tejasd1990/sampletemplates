@@ -1,0 +1,290 @@
+{
+    "groups": [
+      {
+        "id": "cdResource",
+        "name": "Existing resource on which CD is getting setup",
+        "properties": {
+          "context": "cdResource"
+        }
+      },
+      {
+        "id": "containerRegistry",
+        "name": "Container Registry",
+        "properties": {
+          "context": "service"
+        }
+      },
+      {
+        "id": "dockerInputs",
+        "name": "Application Settings",
+        "properties": {
+          "context": "application"
+        }
+      }
+    ],
+    "inputs": [
+      {
+        "id": "subscriptionId",
+        "type": "string",
+        "description": "Id of subscription where AKS cluster is present.",
+        "Name": "Subscription",
+        "inputMode": "None",
+        "groupId": "cdResource",
+        "properties": {
+          "resourceProviders": "Microsoft.ContainerService;Microsoft.ContainerRegistry;Microsoft.Resources;Microsoft.Insights;Microsoft.OperationalInsights;Microsoft.OperationsManagement;Microsoft.Compute;Microsoft.Network;Microsoft.Storage;"
+        },
+        "dynamicValidations": [
+          {
+            "dataSourceId": "checkDreamSparkQuotaId",
+            "errorMessage": "The resource providers 'Microsoft.Storage' and 'Microsoft.ContainerRegistry' do not support DreamSpark subscriptions. Either select a different subscription or select a scenario where all the resource providers support DreamSpark subscriptions."
+          }
+        ]
+      },
+      {
+        "id": "resourceGroup",
+        "type": "string",
+        "description": "Name of the resource group where AKS cluster is present.",
+        "Name": "Resource group",
+        "inputMode": "None",
+        "groupId": "cdResource"
+      },
+      {
+        "id": "acrResourceGroup",
+        "type": "string",
+        "description": "Name of the resource group where Azure Container registry is present.",
+        "Name": "Resource group",
+        "inputMode": "None",
+        "groupId": "cdResource"
+      },
+      {
+        "id": "location",
+        "type": "string",
+        "description": "Choose the Azure region that's right for you and your customers.",
+        "name": "Location",
+        "inputMode": "None",
+        "isRequired": true,
+        "dataSourceId": "getResourceGroupLocation",
+        "groupId": "cdResource"
+      },
+      {
+        "id": "clusterName",
+        "type": "string",
+        "description": "The name of the Azure Kubernetes Service cluster",
+        "name": "Cluster name",
+        "inputMode": "None",
+        "groupId": "cdResource"
+      },
+      {
+        "id": "httpApplicationRoutingDomain",
+        "type": "string",
+        "description": "The HTTP application routing domain of Azure Kubernetes Service cluster",
+        "name": "HTTP application routing domain",
+        "inputMode": "None",
+        "dataSourceId": "httpApplicationRoutingDomain",
+        "groupId": "cdResource"
+      },
+      {
+        "id": "kubernetesVersion",
+        "type": "string",
+        "description": "The kubernetes version present in Azure Kubernetes Service cluster",
+        "name": "kubernetes Version",
+        "inputMode": "None",
+        "dataSourceId": "kubernetesVersion",
+        "groupId": "cdResource"
+      },
+      {
+        "id": "reuseACR",
+        "type": "string",
+        "name": "Container Registry Selection",
+        "inputMode": "radioButtons",
+        "Options": [
+          {
+            "value": "false",
+            "displayValue": "Create new"
+          },
+          {
+            "value": "true",
+            "displayValue": "Use existing"
+          }
+        ],
+        "groupId": "containerRegistry",
+        "isRequired": true,
+        "defaultValue": "true",
+        "logTelemetry": true
+      },
+      {
+        "id": "existingContainerRegistryId",
+        "type": "string",
+        "name": "Container Registry Name",
+        "inputMode": "Combo",
+        "groupId": "containerRegistry",
+        "dataSourceId": "fetchExistingContainerRegistriesInSubscription",
+        "visibleRule": "reuseACR == true",
+        "isRequired": true
+      },
+      {
+        "id": "existingContainerRegistryResourceGroupLocation",
+        "type": "string",
+        "name": "Container Registry Resource Group Location",
+        "inputMode": "None",
+        "groupId": "containerRegistry",
+        "dataSourceId": "getContainerRegistryResourceGroupLocation",
+        "visibleRule": "reuseACR == null"
+      },
+      {
+        "id": "containerRegistryName",
+        "type": "string",
+        "name": "Container Registry Name",
+        "inputMode": "TextBox",
+        "groupId": "containerRegistry",
+        "isRequired": true,
+        "defaultValue": "{{{inputs.clusterName}}}acr",
+        "staticValidation": {
+          "pattern": "[a-zA-Z0-9]*",
+          "errorMessage": "Resource names may contain alpha numeric characters only and must be between 5 and 50 characters.",
+          "minLength": 5,
+          "maxLength": 50
+        },
+        "dynamicValidations": [
+          {
+            "dataSourceId": "checkContainerRegistryAvailability",
+            "errorMessage": "Registry with this name already exists."
+          }
+        ],
+        "visibleRule": "reuseACR == false"
+      },
+      {
+        "id": "containerRegistrySKU",
+        "type": "string",
+        "description": "Azure Container Registry is a private Docker registry for hosting container images. All SKUs provide the same programmatic capabilities. Choosing a higher SKU will provide more performance and scale. <a href='https://azure.microsoft.com/en-us/pricing/details/container-registry/' target='_blank'>More info on pricing and capabilities.</a>",
+        "name": "Container Registry SKU",
+        "inputMode": "Combo",
+        "groupId": "containerRegistry",
+        "isRequired": true,
+        "possibleValues": [
+          {
+            "value": "Basic",
+            "displayValue": "Basic"
+          },
+          {
+            "value": "Standard",
+            "displayValue": "Standard"
+          },
+          {
+            "value": "Premium",
+            "displayValue": "Premium"
+          }
+        ],
+        "defaultValue": "Standard",
+        "visibleRule": "reuseACR == false"
+      },
+      {
+        "id": "containerRegistryLocation",
+        "type": "string",
+        "name": "Container Registry Location",
+        "inputMode": "Combo",
+        "groupId": "containerRegistry",
+        "isRequired": true,
+        "dataSourceId": "fetchContainerRegistryLocations",
+        "defaultValue": "South Central US",
+        "visibleRule": "reuseACR == false"
+      },
+      {
+        "id": "azureAuth",
+        "type": "authorization",
+        "description": "Authorization for Azure ARM endpoints.",
+        "inputMode": "None",
+        "properties": {
+          "scope": [
+            "{{#equals}}{{{inputs.reuseACR}}} false true '/subscriptions/{{{inputs.subscriptionId}}}/resourceGroups/{{{inputs.acrResourceGroup}}}'{{/equals}}{{#equals}}{{{inputs.reuseACR}}} true true '{{{inputs.existingContainerRegistryId}}}'{{/equals}}",
+          ],
+          "location": [
+            "{{inputs.location}}",
+            "{{#equals}}{{{inputs.reuseACR}}} true true '{{{inputs.existingContainerRegistryResourceGroupLocation}}}' {{/equals}}"
+          ]
+        }
+      },
+      {
+        "id": "azureDevOpsAuth",
+        "type": "authorization",
+        "description": "Azure DevOps authorization",
+        "inputMode": "None"
+      },
+      {
+        "id": "dockerFilePath",
+        "type": "string",
+        "description": "The path to the Dockerfile used for building the container image. Minimatch patterns are supported, for example: **/Dockerfile. The complete path from the repository root to the Dockerfile can also be used. For example: Fabrikam/WebApp/Dockerfile.",
+        "name": "Dockerfile path",
+        "inputMode": "TextBox",
+        "groupId": "dockerInputs",
+        "isRequired": true
+      },
+      {
+        "id": "containerPort",
+        "type": "string",
+        "description": "Specify port to expose in container.",
+        "name": "PORT",
+        "inputMode": "TextBox",
+        "groupId": "dockerInputs",
+        "isRequired": false,
+        "defaultValue": ""
+      },
+      {
+        "id": "dockerContext",
+        "type": "string",
+        "description": "Specify the source directory path which will be used for building container.",
+        "name": "Docker build context",
+        "inputMode": "TextBox",
+        "groupId": "dockerInputs",
+        "isRequired": false,
+        "defaultValue": ""
+      }
+    ],
+    "dataSources": [
+      {
+        "id": "httpApplicationRoutingDomain",
+        "endpointUrlStem": "/subscriptions/{{{inputs.subscriptionId}}}/resourceGroups/{{inputs.acrResourceGroup}}/providers/Microsoft.ContainerService/managedClusters/{{inputs.clusterName}}?api-version=2018-03-31",
+        "resultSelector": "$.properties.addonProfiles.httpApplicationRouting.config.HTTPApplicationRoutingZoneName"
+      },
+      {
+        "id": "kubernetesVersion",
+        "endpointUrlStem": "/subscriptions/{{{inputs.subscriptionId}}}/resourceGroups/{{inputs.resourceGroup}}/providers/Microsoft.ContainerService/managedClusters/{{inputs.clusterName}}?api-version=2018-03-31",
+        "resultSelector": "$.properties.kubernetesVersion"
+      },
+      {
+        "id": "fetchExistingContainerRegistriesInSubscription",
+        "endpointUrlStem": "/subscriptions/{{{inputs.subscriptionId}}}/providers/Microsoft.ContainerRegistry/registries?api-version=2017-03-01",
+        "resultSelector": "$.value.[?(@.type === 'Microsoft.ContainerRegistry/registries')]",
+        "resultTemplate": "{\"Value\":\"{{id}}\",\"DisplayValue\":\"{{name}}\"}"
+      },
+      {
+        "id": "fetchContainerRegistryLocations",
+        "endpointUrlStem": "/subscriptions/{{{inputs.subscriptionId}}}/providers/Microsoft.ContainerRegistry?api-version=2016-09-01",
+        "resultSelector": "$.resourceTypes[?(@.resourceType === 'locations')].locations"
+      },
+      {
+        "id": "checkContainerRegistryAvailability",
+        "endpointUrlStem": "subscriptions/{{{inputs.subscriptionId}}}/providers/Microsoft.ContainerRegistry/checkNameAvailability?api-version=2017-10-01",
+        "httpMethod": "POST",
+        "requestBody": "{\"name\":\"{{{inputs.containerRegistryName}}}\",\"type\":\"Microsoft.ContainerRegistry/registries\"}",
+        "resultTemplate": "{\"value\":\"{{{nameAvailable}}}\",\"message\":\"{{{message}}}\"}"
+      },
+      {
+        "id": "getResourceGroupLocation",
+        "endpointUrlStem": "/subscriptions/{{{inputs.subscriptionId}}}//resourceGroups/{{inputs.resourceGroup}}?api-version=2018-05-01",
+        "resultSelector": "$.location"
+      },
+      {
+        "id": "getContainerRegistryResourceGroupLocation",
+        "endpointUrlStem": "/subscriptions/{{{inputs.subscriptionId}}}/resourceGroups/{{#parseAzureResourceId}}{{{inputs.existingContainerRegistryId}}} 4{{/parseAzureResourceId}}?api-version=2018-05-01",
+        "resultSelector": "$.location"
+      },
+      {
+        "id": "checkDreamSparkQuotaId",
+        "endpointUrlStem": "subscriptions/{{{inputs.subscriptionId}}}?api-version=2014-04-01",
+        "httpMethod": "GET",
+        "resultSelector": "$.subscriptionPolicies",
+        "resultTemplate": "{\"value\":\"{{#equals}}{{{quotaId}}} 'DreamSpark_2015-02-01' true false true{{/equals}}\"}"
+      }
+    ]
+  }
